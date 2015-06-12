@@ -19,6 +19,7 @@ PBCLK = SYSCLK /FPBDIV = 80MHz*/
 /* Input array with 16-bit complex fixed-point twiddle factors.
  this is for 16-point FFT. For other configurations, for example 32 point FFT,
  Change it to fft16c32 */
+
 #define fftc fft16c1024
 
 /* defines the sample frequency*/
@@ -102,7 +103,7 @@ int time_counter_seconds = 0;
 
 int sample_counter = 0;
 
-/* log2(16)=4 */
+// log base 2 of N(1024) = 102
 int log2N = 10;
 
 /* Input array with 16-bit complex fixed-point elements. */
@@ -112,7 +113,7 @@ int log2N = 10;
         int16 re;
         int16 im;
 } int16c; */
-int16c sampleBuffer[N];
+int16c sample_buffer[N];
 
 /* intermediate array */
 int16c scratch[N];
@@ -121,16 +122,16 @@ int16c scratch[N];
 int16c dout[N];
 
 /* intermediate array holds computed single side FFT */
-int singleSidedFFT[N];
+int single_sided_fft[N];
 
 /* array that stores the corresponding frequency of each point in frequency domain*/
-short freqVector[N];
+short freq_vector[N];
 
 /* indicates the dominant frequency */
 int freq = 0;
 
 // Function definitions
-int computeFFT(int16c sampleBuffer[]);
+int compute_FFT(int16c sample_buffer[]);
 
 unsigned char SSD_number[] = {
     0b0111111, //0
@@ -182,7 +183,7 @@ void __ISR(_TIMER_5_VECTOR, ipl5) _T5Interrupt(void) {
     //using readADC();
     //Because we're listening to a real valued signal, we will only write to the 're' value
     //We can keep the 'im' value at 0, as set in the declaration loop later.
-    sampleBuffer[sample_counter].re = readADC();
+    sample_buffer[sample_counter].re = readADC();
     sample_counter++;
     //Once we have the voltage value of the sample, we must put that into the buffer at the corresponding spot
     //We are taking 2048 samples per second- Each time we take a sample, we write it to the FFT buffer
@@ -190,8 +191,8 @@ void __ISR(_TIMER_5_VECTOR, ipl5) _T5Interrupt(void) {
     //Thus, every time we take in 1024 samples, we must call the FFT to find the frequency
 
     if (sample_counter == 1024) {
-        //call computeFFT() here;
-        freq = freqVector[computeFFT(&sampleBuffer)];
+        //call compute_FFT() here;
+        freq = freq_vector[compute_FFT(&sample_buffer)];
 
         sample_counter = 0;
     }
@@ -479,14 +480,14 @@ main() {
 
 
 
-    // assign values to sampleBuffer[] 
+    // assign values to sample_buffer[] 
     for (i = 0; i < N; i++) {
-        sampleBuffer[i].re = i;
-        sampleBuffer[i].im = 0;
+        sample_buffer[i].re = i;
+        sample_buffer[i].im = 0;
     }
     // compute the corresponding frequency/bins of each data point in frequency domain
     for (i = 0; i < N / 2; i++) {
-        freqVector[i] = i * (SAMPLE_FREQ / 2) / ((N / 2) - 1);
+        freq_vector[i] = i * (SAMPLE_FREQ / 2) / ((N / 2) - 1);
     }
 
     while (1) {
@@ -685,22 +686,22 @@ main() {
     }
 }
 
-int computeFFT(int16c *sampleBuffer) {
+int compute_FFT(int16c *sample_buffer) {
     int i;
     int dominant_freq = 1;
 
-    // computer N point FFT, taking sampleBuffer[] as time domain inputs
+    // computer N point FFT, taking sample_buffer[] as time domain inputs
     // and storing generated frequency domain outputs in dout[] 
-    mips_fft16(dout, sampleBuffer, fftc, scratch, log2N);
+    mips_fft16(dout, sample_buffer, fftc, scratch, log2N);
 
     // compute single sided fft of our input signal. 
     for (i = 0; i < N / 2; i++) {
-        singleSidedFFT[i] = 2 * ((dout[i].re * dout[i].re) + (dout[i].im * dout[i].im));
+        single_sided_fft[i] = 2 * ((dout[i].re * dout[i].re) + (dout[i].im * dout[i].im));
     }
 
     // find the index of dominant frequency, which is the index of the largest data points 
     for (i = 1; i < N / 2; i++) {
-        if (singleSidedFFT[dominant_freq] < singleSidedFFT[i])
+        if (single_sided_fft[dominant_freq] < single_sided_fft[i])
             dominant_freq = i;
     }
 
