@@ -690,8 +690,8 @@ int compute_FFT(int16c *sample_buffer) {
     int i;
     int dominant_freq = 1;
 
-    // computer N point FFT, taking sample_buffer[] as time domain inputs
-    // and storing generated frequency domain outputs in dout[] 
+    // compute N point FFT, taking sample_buffer[] as time domain inputs
+    // while storing generated frequency domain outputs in dout[] 
     mips_fft16(dout, sample_buffer, fftc, scratch, log2N);
 
     // compute single sided fft of our input signal. 
